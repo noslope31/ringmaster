@@ -3,8 +3,11 @@ import { loadInventory, saveInventory, loadLogs, saveLogs } from './utils/storag
 import Dashboard from './components/Dashboard';
 import InventoryTable from './components/InventoryTable';
 import StockTable from './components/StockTable';
-import { Gem, ListOrdered, PackageSearch } from 'lucide-react';
+import { Gem, ListOrdered, PackageSearch, Lock, Eye, EyeOff } from 'lucide-react';
 import { supabase } from './utils/supabase';
+
+// Get passcode from environment variables, fallback to "ringmaster" if not set
+const CORRECT_PASSCODE = import.meta.env.VITE_APP_PASSCODE || 'ringmaster';
 
 function App() {
   const [items, setItems] = useState([]);
@@ -12,8 +15,24 @@ function App() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [currentView, setCurrentView] = useState('orders');
 
+  // --- Passcode Protection State ---
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [passcodeInput, setPasscodeInput] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [passcodeError, setPasscodeError] = useState(false);
+
+  // Check if already unlocked on this device
+  useEffect(() => {
+    const savedPasscode = localStorage.getItem('ringmaster_app_passcode');
+    if (savedPasscode === CORRECT_PASSCODE) {
+      setIsUnlocked(true);
+    }
+  }, []);
+
   // --- Data: load inventory and logs ---
   useEffect(() => {
+    if (!isUnlocked) return;
+
     const loadData = async () => {
       const localInv = loadInventory();
       const localLogs = loadLogs();
@@ -72,11 +91,11 @@ function App() {
     };
 
     loadData();
-  }, []);
+  }, [isUnlocked]);
 
   // --- Data: save inventory and logs ---
   useEffect(() => {
-    if (isLoaded) {
+    if (isLoaded && isUnlocked) {
       // Save locally to localStorage as a persistent backup
       saveInventory(items);
       saveLogs(logs);
@@ -111,7 +130,139 @@ function App() {
 
       saveData();
     }
-  }, [items, logs, isLoaded]);
+  }, [items, logs, isLoaded, isUnlocked]);
+
+  // --- Passcode Submit Handler ---
+  const handlePasscodeSubmit = (e) => {
+    e.preventDefault();
+    if (passcodeInput === CORRECT_PASSCODE) {
+      localStorage.setItem('ringmaster_app_passcode', passcodeInput);
+      setIsUnlocked(true);
+      setPasscodeError(false);
+    } else {
+      setPasscodeError(true);
+    }
+  };
+
+  // --- Render Passcode Screen if locked ---
+  if (!isUnlocked) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '1.5rem',
+        backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(212, 175, 55, 0.05), transparent 40%), radial-gradient(circle at 80% 20%, rgba(212, 175, 55, 0.03), transparent 40%)',
+      }}>
+        <div style={{ width: '100%', maxWidth: '380px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '64px',
+              height: '64px',
+              background: 'rgba(212, 175, 55, 0.1)',
+              borderRadius: '50%',
+              border: '1px solid rgba(212, 175, 55, 0.25)',
+              boxShadow: '0 0 20px rgba(212, 175, 55, 0.15)',
+              marginBottom: '1rem',
+            }}>
+              <Gem size={32} color="var(--accent-gold)" />
+            </div>
+            <h1 style={{
+              fontSize: '2rem',
+              fontWeight: '700',
+              backgroundImage: 'linear-gradient(to right, var(--accent-gold), #fff)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              marginBottom: '0.25rem',
+            }}>
+              RingMaster
+            </h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+              Enter passcode to unlock inventory
+            </p>
+          </div>
+
+          <div className="glass-panel" style={{ padding: '2rem' }}>
+            <form onSubmit={handlePasscodeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={passcodeInput}
+                    onChange={(e) => setPasscodeInput(e.target.value)}
+                    placeholder="Enter passcode"
+                    required
+                    className="input-field"
+                    style={{ width: '100%', paddingRight: '2.75rem' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '0.75rem',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: 'var(--text-muted)',
+                      padding: '0',
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                    aria-label={showPassword ? 'Hide passcode' : 'Show passcode'}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              {passcodeError && (
+                <div style={{
+                  background: 'var(--accent-danger-light)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  borderRadius: 'var(--border-radius-md)',
+                  padding: '0.75rem 1rem',
+                  fontSize: '0.875rem',
+                  color: '#fca5a5',
+                  textAlign: 'center',
+                }}>
+                  Incorrect passcode. Please try again.
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="btn"
+                style={{
+                  width: '100%',
+                  justifyContent: 'center',
+                  background: 'var(--accent-gold)',
+                  color: '#0a0a0c',
+                  fontWeight: '600',
+                  padding: '0.75rem',
+                  fontSize: '0.9375rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                }}
+              >
+                <Lock size={16} />
+                Unlock
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // --- Render: main app ---
   return (
