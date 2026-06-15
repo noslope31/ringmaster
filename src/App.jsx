@@ -3,8 +3,7 @@ import { loadInventory, saveInventory, loadLogs, saveLogs } from './utils/storag
 import Dashboard from './components/Dashboard';
 import InventoryTable from './components/InventoryTable';
 import StockTable from './components/StockTable';
-import Login from './components/Login';
-import { Gem, ListOrdered, PackageSearch, LogOut } from 'lucide-react';
+import { Gem, ListOrdered, PackageSearch } from 'lucide-react';
 import { supabase } from './utils/supabase';
 
 function App() {
@@ -12,41 +11,15 @@ function App() {
   const [logs, setLogs] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [currentView, setCurrentView] = useState('orders');
-  const [session, setSession] = useState(undefined); // undefined = checking, null = not logged in, object = logged in
-
-  // --- Auth: listen for login/logout events ---
-  useEffect(() => {
-    // Get the current session on first load
-    supabase?.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-
-    // Listen for login/logout changes
-    const { data: { subscription } } = supabase?.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      // Reset loaded state when user logs out so data reloads on next login
-      if (!session) {
-        setIsLoaded(false);
-        setItems([]);
-        setLogs([]);
-      }
-    }) ?? { data: { subscription: null } };
-
-    return () => subscription?.unsubscribe();
-  }, []);
 
   // --- Data: load inventory and logs ---
   useEffect(() => {
-    // Only load data when we have an active session (or no Supabase, for local-only use)
-    if (session === undefined) return; // Still checking auth
-    if (supabase && !session) return;  // Supabase is configured but not logged in — wait
-
     const loadData = async () => {
       const localInv = loadInventory();
       const localLogs = loadLogs();
 
-      // 1. Try loading from Supabase Cloud if configured and logged in
-      if (supabase && session) {
+      // 1. Try loading from Supabase Cloud if configured
+      if (supabase) {
         try {
           const { data, error } = await supabase
             .from('ringmaster_data')
@@ -99,7 +72,7 @@ function App() {
     };
 
     loadData();
-  }, [session]);
+  }, []);
 
   // --- Data: save inventory and logs ---
   useEffect(() => {
@@ -109,8 +82,8 @@ function App() {
       saveLogs(logs);
 
       const saveData = async () => {
-        // 1. Try saving to Supabase Cloud (only when logged in)
-        if (supabase && session) {
+        // 1. Try saving to Supabase Cloud
+        if (supabase) {
           try {
             const { error } = await supabase
               .from('ringmaster_data')
@@ -140,25 +113,6 @@ function App() {
     }
   }, [items, logs, isLoaded]);
 
-  // --- Sign out handler ---
-  const handleSignOut = async () => {
-    await supabase?.auth.signOut();
-  };
-
-  // --- Render: waiting to determine auth state ---
-  if (session === undefined) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</div>
-      </div>
-    );
-  }
-
-  // --- Render: not logged in (and Supabase is configured) ---
-  if (supabase && !session) {
-    return <Login />;
-  }
-
   // --- Render: main app ---
   return (
     <div className="min-h-screen flex flex-col items-center">
@@ -172,18 +126,6 @@ function App() {
           </h1>
           <p className="text-sm text-secondary">Lord of the Rings Inventory Tracker</p>
         </div>
-        {session && (
-          <button
-            id="sign-out-button"
-            onClick={handleSignOut}
-            className="btn btn-outline"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}
-            title={`Signed in as ${session.user?.email}`}
-          >
-            <LogOut size={15} />
-            Sign Out
-          </button>
-        )}
       </header>
 
       <main className="w-full max-w-7xl mx-auto p-6 flex-1 flex flex-col gap-6">
