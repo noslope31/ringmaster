@@ -6,6 +6,9 @@
 # Local database file
 db.json
 
+# Recovery codes (never commit these)
+recovery-codes.txt
+
 # Logs
 logs
 *.log
