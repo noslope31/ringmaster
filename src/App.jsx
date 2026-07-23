@@ -282,7 +282,7 @@ function App() {
       <main className="w-full max-w-7xl mx-auto p-6 flex-1 flex flex-col gap-6">
         <Dashboard items={items} />
 
-        <div className="flex gap-2 p-1 bg-black/20 rounded-lg border border-white/5 w-fit">
+        <div className="flex flex-wrap gap-2 p-1 bg-black/20 rounded-lg border border-white/5 w-fit">
           <button 
             className={`btn ${currentView === 'orders' ? 'bg-gold/20 text-gold border-gold/30' : 'btn-outline border-transparent'}`}
             onClick={() => setCurrentView('orders')}

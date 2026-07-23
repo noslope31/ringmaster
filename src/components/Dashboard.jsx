@@ -31,7 +31,7 @@ export default function Dashboard({ items }) {
   });
 
   return (
-    <div className="grid grid-cols-6 gap-3 mb-6 w-full">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6 w-full">
       <div className="glass-panel p-4 flex flex-col items-center justify-center text-center aspect-square min-w-0">
         <div className="p-2 bg-white/5 rounded-full mb-2">
           <Package className="text-gold" size={20} />

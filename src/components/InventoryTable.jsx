@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Plus, Trash2, Edit2, AlertCircle, Check, X, ShoppingCart, Image as ImageIcon, Undo2, PackageSearch, ListOrdered, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, Edit2, AlertCircle, Check, X, ShoppingCart, Image as ImageIcon, Undo2, PackageSearch, ListOrdered, ChevronUp, ChevronDown, Upload } from 'lucide-react';
 import { calculateRevenue, calculateNetProfit, getReturnDeadlineInfo, compressImage, getDisplayValues } from '../utils/helpers';
 import { format, addDays } from 'date-fns';
 
@@ -388,6 +388,48 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
     reader.readAsText(file);
   };
 
+  const handleImportOrder = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const parsedItems = JSON.parse(event.target.result);
+        if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
+          alert('Expected a JSON array with at least one item.');
+          return;
+        }
+
+        const importedRings = parsedItems.map(entry => ({
+          id: uuidv4(),
+          name: entry.name || '',
+          imageUrl: entry.imageUrl || '',
+          sizes: [{
+            id: uuidv4(),
+            size: entry.size || '',
+            quantity: entry.quantity ?? 1,
+            unitCost: entry.unitCost ?? '',
+            unitCostAfterTax: entry.unitCostAfterTax ?? '',
+            remark: entry.remark || ''
+          }]
+        }));
+
+        setOrderData({
+          orderDate: parsedItems[0].orderDate || '',
+          deliveryDate: parsedItems[0].deliveryDate || ''
+        });
+        setRings(importedRings);
+        setIsReturningGlobal(false);
+        setIsAdding(true);
+      } catch (err) {
+        alert('Failed to import order. Please make sure it is a valid JSON file.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   const startEdit = (item) => {
     setEditingItemId(item.id);
     setEditForm({ 
@@ -558,11 +600,15 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
 
   return (
     <div className="glass-panel p-6 animate-fade-in" onClick={() => setActiveDropdown(null)}>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
         <h2 className="text-xl font-bold flex items-center gap-2">
           Inventory Data
         </h2>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <label className="btn btn-outline border-white/10 text-xs py-1.5 flex items-center gap-2 cursor-pointer">
+            <Upload size={14} /> Import New Order
+            <input type="file" accept=".json" className="hidden" onChange={handleImportOrder} />
+          </label>
           <label className="btn btn-outline border-white/10 text-xs py-1.5 flex items-center gap-2 cursor-pointer">
             <PackageSearch size={14} /> Import Backup
             <input type="file" accept=".json" className="hidden" onChange={handleImport} />
