@@ -204,24 +204,25 @@ body {
 .data-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: auto;
   text-align: left;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
 }
 
 .data-table th {
-  padding: 1rem;
+  padding: 0.5rem 0.4rem;
   background: var(--bg-tertiary);
   color: var(--text-secondary);
   font-weight: 500;
   text-transform: uppercase;
-  font-size: 0.75rem;
-  letter-spacing: 0.05em;
+  font-size: 0.6875rem;
+  letter-spacing: 0.03em;
   border-bottom: 1px solid var(--border-color);
   white-space: nowrap;
 }
 
 .data-table td {
-  padding: 1rem;
+  padding: 0.45rem 0.4rem;
   border-bottom: 1px solid var(--border-color);
   color: var(--text-primary);
   white-space: nowrap;
@@ -323,7 +324,7 @@ body {
 }
 
 .filter-row th {
-  padding: 0.5rem 0.75rem !important;
+  padding: 0.4rem 0.4rem !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
 

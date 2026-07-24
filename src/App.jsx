@@ -267,7 +267,7 @@ function App() {
   // --- Render: main app ---
   return (
     <div className="min-h-screen flex flex-col items-center">
-      <header className="w-full max-w-7xl mx-auto p-6 mt-4 animate-fade-in flex items-center gap-3">
+      <header className="w-full max-w-[1920px] mx-auto p-6 mt-4 animate-fade-in flex items-center gap-3">
         <div className="p-2 bg-gold/10 rounded-full border border-gold/20 shadow-glow">
           <Gem className="text-gold" size={32} />
         </div>
@@ -279,7 +279,7 @@ function App() {
         </div>
       </header>
 
-      <main className="w-full max-w-7xl mx-auto p-6 flex-1 flex flex-col gap-6">
+      <main className="w-full max-w-[1920px] mx-auto p-6 flex-1 flex flex-col gap-6">
         <Dashboard items={items} />
 
         <div className="flex flex-wrap gap-2 p-1 bg-black/20 rounded-lg border border-white/5 w-fit">
@@ -349,7 +349,7 @@ function App() {
         )}
       </main>
 
-      <footer className="w-full max-w-7xl mx-auto p-6 text-center text-sm text-muted">
+      <footer className="w-full max-w-[1920px] mx-auto p-6 text-center text-sm text-muted">
         <p>RingMaster Inventory © {new Date().getFullYear()}</p>
       </footer>
     </div>
