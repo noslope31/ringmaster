@@ -1005,7 +1005,7 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
       <div className="table-container max-h-[calc(100vh-280px)] overflow-auto custom-scrollbar border border-white/10 rounded-lg shadow-2xl">
         <table className="data-table border-separate border-spacing-0">
           <thead>
-            <tr className="bg-zinc-900 shadow-sm relative z-40">
+            <tr className="bg-zinc-900 shadow-sm sticky z-40" style={{ top: 0 }}>
               <th></th>
               <th className="cursor-pointer hover:bg-white/5 transition-colors" onClick={() => handleSort('name')}>
                 <div className="flex items-center gap-1">
@@ -1066,7 +1066,7 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
               <th>Remark</th>
               <th className="text-right">Actions</th>
             </tr>
-            <tr className="filter-row">
+            <tr className="filter-row sticky z-40" style={{ top: '33px' }}>
               <th></th>
               <th><MultiSelectFilter columnKey="name" options={uniqueValues.name} /></th>
               <th><MultiSelectFilter columnKey="size" options={uniqueValues.size} /></th>
