@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Plus, Trash2, Edit2, AlertCircle, Check, X, ShoppingCart, Image as ImageIcon, Undo2, PackageSearch, ListOrdered, ChevronUp, ChevronDown, Upload, Database } from 'lucide-react';
+import { Plus, Trash2, Edit2, AlertCircle, Check, X, ShoppingCart, Image as ImageIcon, Undo2, PackageSearch, ListOrdered, ChevronUp, ChevronDown, Upload, Database, Calculator } from 'lucide-react';
 import { calculateRevenue, calculateNetProfit, getReturnDeadlineInfo, compressImage, getDisplayValues } from '../utils/helpers';
 import { uploadImageToBlob, isBlobUrl } from '../utils/blob';
 import { format, addDays } from 'date-fns';
@@ -516,6 +516,28 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
     alert(`Migration complete: ${succeeded} succeeded, ${failed} failed.`);
   };
 
+  const handleRecalculateCostTax = () => {
+    const expectedFor = (item) => Number(((item.unitCost || 0) * 1.12).toFixed(2));
+    const itemsToFix = items.filter(item => Number(item.unitCostAfterTax || 0) !== expectedFor(item));
+
+    if (itemsToFix.length === 0) {
+      alert('All (Cost+Tax) values are already correct.');
+      return;
+    }
+
+    if (!window.confirm(`Found ${itemsToFix.length} record(s) where (Cost+Tax) doesn't match Cost × 1.12. Recalculate them now? This cannot be undone.`)) {
+      return;
+    }
+
+    setItems(items.map(item =>
+      Number(item.unitCostAfterTax || 0) !== expectedFor(item)
+        ? { ...item, unitCostAfterTax: expectedFor(item) }
+        : item
+    ));
+
+    alert(`Fixed ${itemsToFix.length} record(s).`);
+  };
+
   const startEdit = (item) => {
     setEditingItemId(item.id);
     setEditForm({ 
@@ -704,6 +726,9 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
           </button>
           <button onClick={handleMigrateImages} className="btn btn-outline border-white/10 text-xs py-1.5 flex items-center gap-2">
             <Database size={14} /> Migrate Images
+          </button>
+          <button onClick={handleRecalculateCostTax} className="btn btn-outline border-white/10 text-xs py-1.5 flex items-center gap-2">
+            <Calculator size={14} /> Fix Cost+Tax
           </button>
           <button className="btn btn-outline border-orange-400 text-orange-400 hover:bg-orange-400/10 text-xs py-1.5 flex items-center gap-2" onClick={() => setIsReturningGlobal(!isReturningGlobal)}>
             <Undo2 size={14} /> New Return
