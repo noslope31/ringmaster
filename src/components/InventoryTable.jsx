@@ -1006,6 +1006,7 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
         <table className="data-table border-separate border-spacing-0">
           <thead>
             <tr className="bg-zinc-900 shadow-sm relative z-40">
+              <th></th>
               <th className="cursor-pointer hover:bg-white/5 transition-colors" onClick={() => handleSort('name')}>
                 <div className="flex items-center gap-1">
                   Ring Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
@@ -1066,6 +1067,7 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
               <th className="text-right">Actions</th>
             </tr>
             <tr className="filter-row">
+              <th></th>
               <th><MultiSelectFilter columnKey="name" options={uniqueValues.name} /></th>
               <th><MultiSelectFilter columnKey="size" options={uniqueValues.size} /></th>
               <th><MultiSelectFilter columnKey="quantity" options={uniqueValues.quantity} /></th>
@@ -1096,7 +1098,7 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
           <tbody>
             {filteredItems.length === 0 ? (
               <tr>
-                <td colSpan="18" className="text-center py-8 text-muted">No matching inventory records found.</td>
+                <td colSpan="19" className="text-center py-8 text-muted">No matching inventory records found.</td>
               </tr>
             ) : (
               (() => {
@@ -1230,6 +1232,41 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
                           if (isSelling) saveSell(item.id);
                         }
                       }}>
+                        <td className="text-center" style={{ padding: '0.25rem' }}>
+                          <div className="flex justify-center gap-1">
+                            {isEditing ? (
+                              <>
+                                <button className="btn btn-primary p-0.5" onClick={() => saveEdit(item.id)} title="Save changes">
+                                  <Check size={12} />
+                                </button>
+                                <button className="btn btn-outline p-0.5" onClick={() => setEditingItemId(null)} title="Cancel">
+                                  <X size={12} />
+                                </button>
+                              </>
+                            ) : isSelling ? (
+                              <div className="flex gap-1 items-center bg-black/40 p-1 rounded border border-white/10">
+                                <input type="number" min="1" className="input-field py-1 px-1 w-12 text-xs text-center" value={sellForm.qty} onChange={e => setSellForm({...sellForm, qty: e.target.value})} title="Qty to sell" />
+                                <span className="text-muted text-xs">@</span>
+                                <input type="number" step="0.01" min="0" className="input-field py-1 px-1 w-16 text-xs text-center" value={sellForm.price} onChange={e => setSellForm({...sellForm, price: e.target.value})} title="Sale Price" />
+                                <button className="btn btn-primary p-0.5" onClick={() => saveSell(item.id)} title="Confirm Sale">
+                                  <Check size={12} />
+                                </button>
+                                <button className="btn btn-outline p-0.5" onClick={() => setSellingItemId(null)} title="Cancel">
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            ) : (
+                              <>
+                                <button className="btn btn-outline p-0.5 text-success border-success hover:bg-success/20" style={{borderColor: 'var(--accent-success)', color: 'var(--accent-success)'}} onClick={() => startSell(item)} title="Record a Sale">
+                                  <ShoppingCart size={12} />
+                                </button>
+                                <button className="btn btn-outline p-0.5" onClick={() => startEdit(item)} title="Edit Record">
+                                  <Edit2 size={12} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
                         {index === 0 && (
                           <td rowSpan={group.length} className="font-bold border-r border-white/10 align-top bg-black/20" style={{ padding: '0.5rem', minWidth: '110px' }}>
                             {editingRingName === name ? (
@@ -1408,42 +1445,11 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
                           )}
                         </td>
                         <td className="text-right">
-                          <div className="flex justify-end gap-1">
-                            {isEditing ? (
-                              <>
-                                <button className="btn btn-primary p-1" onClick={() => saveEdit(item.id)} title="Save changes">
-                                  <Check size={16} />
-                                </button>
-                                <button className="btn btn-outline p-1" onClick={() => setEditingItemId(null)} title="Cancel">
-                                  <X size={16} />
-                                </button>
-                              </>
-                            ) : isSelling ? (
-                              <div className="flex gap-1 items-center bg-black/40 p-1 rounded border border-white/10">
-                                <input type="number" min="1" className="input-field py-1 px-1 w-12 text-xs text-center" value={sellForm.qty} onChange={e => setSellForm({...sellForm, qty: e.target.value})} title="Qty to sell" />
-                                <span className="text-muted text-xs">@</span>
-                                <input type="number" step="0.01" min="0" className="input-field py-1 px-1 w-16 text-xs text-center" value={sellForm.price} onChange={e => setSellForm({...sellForm, price: e.target.value})} title="Sale Price" />
-                                <button className="btn btn-primary p-1 ml-1" onClick={() => saveSell(item.id)} title="Confirm Sale">
-                                  <Check size={14} />
-                                </button>
-                                <button className="btn btn-outline p-1" onClick={() => setSellingItemId(null)} title="Cancel">
-                                  <X size={14} />
-                                </button>
-                              </div>
-                            ) : (
-                              <>
-                                <button className="btn btn-outline p-1 text-success border-success hover:bg-success/20" style={{borderColor: 'var(--accent-success)', color: 'var(--accent-success)'}} onClick={() => startSell(item)} title="Record a Sale">
-                                  <ShoppingCart size={16} />
-                                </button>
-                                <button className="btn btn-outline p-1" onClick={() => startEdit(item)} title="Edit Record">
-                                  <Edit2 size={16} />
-                                </button>
-                                <button className="btn btn-danger btn-outline p-1" onClick={() => handleDelete(item.id)} title="Delete Record">
-                                  <Trash2 size={16} />
-                                </button>
-                              </>
-                            )}
-                          </div>
+                          {!isEditing && !isSelling && (
+                            <button className="btn btn-danger btn-outline p-1" onClick={() => handleDelete(item.id)} title="Delete Record">
+                              <Trash2 size={16} />
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );
@@ -1456,7 +1462,7 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
           </tbody>
           <tfoot className="sticky bottom-0 z-40 bg-[#0d0d0d] font-bold border-t-2 border-gold/40 shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
             <tr className="text-white text-sm">
-              <td colSpan="2" className="text-right py-3 pr-4">GRAND TOTALS:</td>
+              <td colSpan="3" className="text-right py-3 pr-4">GRAND TOTALS:</td>
               <td className="text-center text-success">{grandTotals.stockIn}</td>
               <td className="text-center text-danger">{grandTotals.stockOut}</td>
               <td className="text-center text-danger">{grandTotals.returns}</td>
