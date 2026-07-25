@@ -432,19 +432,38 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
           return;
         }
 
-        const importedRings = parsedItems.map(entry => ({
-          id: uuidv4(),
-          name: entry.name || '',
-          imageUrl: entry.imageUrl || '',
-          sizes: [{
+        // One image per ring name: prefer an existing catalog match, otherwise
+        // the first image provided for that name within this import batch.
+        const batchImageByName = new Map();
+        parsedItems.forEach(entry => {
+          if (entry.name && entry.imageUrl && !batchImageByName.has(entry.name)) {
+            batchImageByName.set(entry.name, entry.imageUrl);
+          }
+        });
+
+        const resolveImageUrl = (entry) => {
+          const existingRing = existingUniqueRings.find(r => r.name === entry.name);
+          if (existingRing && existingRing.imageUrl) return existingRing.imageUrl;
+          if (entry.name && batchImageByName.has(entry.name)) return batchImageByName.get(entry.name);
+          return entry.imageUrl || '';
+        };
+
+        const importedRings = parsedItems.map(entry => {
+          const unitCost = Number(entry.unitCost) || 0;
+          return {
             id: uuidv4(),
-            size: entry.size || '',
-            quantity: entry.quantity ?? 1,
-            unitCost: entry.unitCost ?? '',
-            unitCostAfterTax: entry.unitCostAfterTax ?? '',
-            remark: entry.remark || ''
-          }]
-        }));
+            name: entry.name || '',
+            imageUrl: resolveImageUrl(entry),
+            sizes: [{
+              id: uuidv4(),
+              size: entry.size || '',
+              quantity: entry.quantity ?? 1,
+              unitCost: entry.unitCost ?? '',
+              unitCostAfterTax: unitCost ? Number((unitCost * 1.12).toFixed(2)) : '',
+              remark: entry.remark || ''
+            }]
+          };
+        });
 
         setOrderData({
           orderDate: parsedItems[0].orderDate || '',
