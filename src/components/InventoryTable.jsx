@@ -50,6 +50,8 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [editingRingName, setEditingRingName] = useState(null);
   const [editRingNameForm, setEditRingNameForm] = useState('');
+  const [editRingImageForm, setEditRingImageForm] = useState('');
+  const [isUploadingRingImage, setIsUploadingRingImage] = useState(false);
   const [filters, setFilters] = useState({
     name: [], size: [], quantity: [], sales: [], returns: [], inventory: [],
     unitCost: [], unitCostAfterTax: [], unitPrice: [], priceQ: [], 
@@ -66,19 +68,40 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
     setSortConfig({ key, direction });
   };
 
-  const startRingNameEdit = (originalName) => {
+  const startRingNameEdit = (originalName, currentImageUrl) => {
     setEditingRingName(originalName);
     setEditRingNameForm(originalName);
+    setEditRingImageForm(currentImageUrl || '');
   };
 
   const saveRingNameEdit = () => {
     setItems(items.map(item => {
       if (item.name === editingRingName) {
-        return { ...item, name: editRingNameForm };
+        return { ...item, name: editRingNameForm, imageUrl: editRingImageForm };
       }
       return item;
     }));
     setEditingRingName(null);
+  };
+
+  const handleRingImageEdit = async (file) => {
+    if (!file) return;
+    setIsUploadingRingImage(true);
+    try {
+      const compressedDataUrl = await compressImage(file);
+      try {
+        const blobUrl = await uploadImageToBlob(compressedDataUrl, 'ring');
+        setEditRingImageForm(blobUrl);
+        return;
+      } catch (uploadErr) {
+        console.error('Blob upload failed, falling back to embedded image', uploadErr);
+      }
+      setEditRingImageForm(compressedDataUrl);
+    } catch (err) {
+      console.error('Failed to compress image', err);
+    } finally {
+      setIsUploadingRingImage(false);
+    }
   };
 
   const [orderData, setOrderData] = useState({
@@ -1192,19 +1215,25 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
                           <td rowSpan={group.length} className="font-bold border-r border-white/10 align-top bg-black/20" style={{ padding: '0.5rem', minWidth: '110px' }}>
                             {editingRingName === name ? (
                               <div className="flex flex-col items-center justify-start h-full gap-2 w-full">
-                                {item.imageUrl ? (
-                                  <img src={item.imageUrl} alt="Ring" className="w-14 h-14 object-cover rounded border border-white/20 shadow-sm flex-shrink-0" />
-                                ) : (
-                                  <div className="w-14 h-14 rounded border border-dashed border-white/20 flex flex-col items-center justify-center text-muted">
-                                    <ImageIcon size={14} className="mb-1" />
-                                    <span className="text-[9px]">No Photo</span>
+                                <label className="relative cursor-pointer group/photo" title={isUploadingRingImage ? 'Uploading...' : 'Change photo'}>
+                                  {editRingImageForm ? (
+                                    <img src={editRingImageForm} alt="Ring" className="w-14 h-14 object-cover rounded border border-white/20 shadow-sm flex-shrink-0 group-hover/photo:opacity-50 transition-opacity" />
+                                  ) : (
+                                    <div className="w-14 h-14 rounded border border-dashed border-white/20 flex flex-col items-center justify-center text-muted group-hover/photo:border-white/40 group-hover/photo:text-white transition-colors">
+                                      <ImageIcon size={14} className="mb-1" />
+                                      <span className="text-[9px]">{isUploadingRingImage ? 'Uploading...' : 'Add Photo'}</span>
+                                    </div>
+                                  )}
+                                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/photo:opacity-100 transition-opacity">
+                                    <Edit2 size={14} className="text-white" />
                                   </div>
-                                )}
-                                <input 
-                                  type="text" 
-                                  className="input-field py-1 px-2 w-full text-center text-xs" 
-                                  value={editRingNameForm} 
-                                  onChange={e => setEditRingNameForm(e.target.value)} 
+                                  <input type="file" accept="image/*" className="hidden" disabled={isUploadingRingImage} onChange={(e) => handleRingImageEdit(e.target.files[0])} />
+                                </label>
+                                <input
+                                  type="text"
+                                  className="input-field py-1 px-2 w-full text-center text-xs"
+                                  value={editRingNameForm}
+                                  onChange={e => setEditRingNameForm(e.target.value)}
                                   autoFocus
                                 />
                                 <div className="flex gap-1 mt-1">
@@ -1218,10 +1247,10 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
                               </div>
                             ) : (
                               <div className="flex flex-col items-center justify-start h-full gap-2 relative group w-full">
-                                <button 
+                                <button
                                   className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 p-1.5 text-muted hover:text-white transition-opacity bg-black/60 rounded-full z-10"
-                                  onClick={() => startRingNameEdit(name)}
-                                  title="Edit Ring Name"
+                                  onClick={() => startRingNameEdit(name, item.imageUrl)}
+                                  title="Edit Ring Name & Photo"
                                 >
                                   <Edit2 size={12} />
                                 </button>
