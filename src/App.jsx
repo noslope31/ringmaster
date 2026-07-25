@@ -275,7 +275,7 @@ function App() {
           <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gold to-yellow-500" style={{ backgroundImage: 'linear-gradient(to right, var(--accent-gold), #fff)' }}>
             RingMaster
           </h1>
-          <p className="text-sm text-secondary">Lord of the Rings Inventory Tracker</p>
+          <p className="text-xs text-secondary">Lord of the Rings Inventory Tracker</p>
         </div>
       </header>
 
