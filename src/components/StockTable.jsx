@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Image as ImageIcon, Edit2, Check, X } from 'lucide-react';
 import { compressImage, getDisplayValues } from '../utils/helpers';
+import { uploadImageToBlob } from '../utils/blob';
 
 export default function StockTable({ items, setItems }) {
   const [editingName, setEditingName] = useState(null);
@@ -175,6 +176,13 @@ export default function StockTable({ items, setItems }) {
                                   if (file) {
                                     try {
                                       const compressed = await compressImage(file);
+                                      try {
+                                        const blobUrl = await uploadImageToBlob(compressed, 'ring');
+                                        setEditForm({...editForm, imageUrl: blobUrl});
+                                        return;
+                                      } catch (uploadErr) {
+                                        console.error('Blob upload failed, falling back to embedded image', uploadErr);
+                                      }
                                       setEditForm({...editForm, imageUrl: compressed});
                                     } catch (err) {
                                       console.error("Failed to compress image", err);

@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Plus, Trash2, Edit2, AlertCircle, Check, X, ShoppingCart, Image as ImageIcon, Undo2, PackageSearch, ListOrdered, ChevronUp, ChevronDown, Upload } from 'lucide-react';
+import { Plus, Trash2, Edit2, AlertCircle, Check, X, ShoppingCart, Image as ImageIcon, Undo2, PackageSearch, ListOrdered, ChevronUp, ChevronDown, Upload, Database } from 'lucide-react';
 import { calculateRevenue, calculateNetProfit, getReturnDeadlineInfo, compressImage, getDisplayValues } from '../utils/helpers';
+import { uploadImageToBlob, isBlobUrl } from '../utils/blob';
 import { format, addDays } from 'date-fns';
 
 export default function InventoryTable({ items, setItems, logs, setLogs }) {
@@ -241,6 +242,13 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
     if (!file) return;
     try {
       const compressedDataUrl = await compressImage(file);
+      try {
+        const blobUrl = await uploadImageToBlob(compressedDataUrl, 'ring');
+        handleRingChange(ringId, 'imageUrl', blobUrl);
+        return;
+      } catch (uploadErr) {
+        console.error('Blob upload failed, falling back to embedded image', uploadErr);
+      }
       handleRingChange(ringId, 'imageUrl', compressedDataUrl);
     } catch (err) {
       console.error('Failed to compress image', err);
@@ -430,6 +438,42 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
     e.target.value = '';
   };
 
+  const handleMigrateImages = async () => {
+    const toMigrate = [...new Set(items.map(i => i.imageUrl).filter(u => u && !isBlobUrl(u)))];
+
+    if (toMigrate.length === 0) {
+      alert('No images need migrating — everything is already in permanent storage.');
+      return;
+    }
+
+    if (!window.confirm(`Found ${toMigrate.length} image(s) to migrate to permanent storage (e.g. Google Drive links or embedded photos). This may take a moment. Continue?`)) {
+      return;
+    }
+
+    const urlMap = new Map();
+    let succeeded = 0;
+    let failed = 0;
+
+    for (const url of toMigrate) {
+      try {
+        const newUrl = await uploadImageToBlob(url, 'ring');
+        urlMap.set(url, newUrl);
+        succeeded++;
+      } catch (err) {
+        console.error(`Failed to migrate image: ${url}`, err);
+        failed++;
+      }
+    }
+
+    if (urlMap.size > 0) {
+      setItems(items.map(item =>
+        urlMap.has(item.imageUrl) ? { ...item, imageUrl: urlMap.get(item.imageUrl) } : item
+      ));
+    }
+
+    alert(`Migration complete: ${succeeded} succeeded, ${failed} failed.`);
+  };
+
   const startEdit = (item) => {
     setEditingItemId(item.id);
     setEditForm({ 
@@ -615,6 +659,9 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
           </label>
           <button onClick={handleExport} className="btn btn-outline border-white/10 text-xs py-1.5 flex items-center gap-2">
             <ListOrdered size={14} /> Export Backup
+          </button>
+          <button onClick={handleMigrateImages} className="btn btn-outline border-white/10 text-xs py-1.5 flex items-center gap-2">
+            <Database size={14} /> Migrate Images
           </button>
           <button className="btn btn-outline border-orange-400 text-orange-400 hover:bg-orange-400/10 text-xs py-1.5 flex items-center gap-2" onClick={() => setIsReturningGlobal(!isReturningGlobal)}>
             <Undo2 size={14} /> New Return
