@@ -4,7 +4,8 @@ import Dashboard from './components/Dashboard';
 import InventoryTable from './components/InventoryTable';
 import StockTable from './components/StockTable';
 import RingGallery from './components/RingGallery';
-import { Gem, ListOrdered, PackageSearch, Lock, Eye, EyeOff, LayoutGrid } from 'lucide-react';
+import Replenish from './components/Replenish';
+import { Gem, ListOrdered, PackageSearch, Lock, Eye, EyeOff, LayoutGrid, PackageX } from 'lucide-react';
 import { supabase } from './utils/supabase';
 
 // Get passcode from environment variables, fallback to "ringmaster" if not set
@@ -303,6 +304,12 @@ function App() {
             <LayoutGrid size={16} /> Ring Gallery
           </button>
           <button
+            className={`btn ${currentView === 'replenish' ? 'bg-gold/20 text-gold border-gold/30' : 'btn-outline border-transparent'}`}
+            onClick={() => setCurrentView('replenish')}
+          >
+            <PackageX size={16} /> Replenish
+          </button>
+          <button
             className={`btn ${currentView === 'logs' ? 'bg-gold/20 text-gold border-gold/30' : 'btn-outline border-transparent'}`}
             onClick={() => setCurrentView('logs')}
           >
@@ -316,6 +323,8 @@ function App() {
           <StockTable items={items} setItems={setItems} />
         ) : currentView === 'gallery' ? (
           <RingGallery items={items} />
+        ) : currentView === 'replenish' ? (
+          <Replenish items={items} />
         ) : (
           <div className="glass-panel p-6 animate-fade-in">
             <h2 className="text-xl font-bold mb-6">Original Submission History</h2>
