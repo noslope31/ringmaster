@@ -12,6 +12,16 @@ const sortSizes = (a, b) => {
 export default function Replenish({ items }) {
   const [threshold, setThreshold] = useState(2);
 
+  const imageByName = useMemo(() => {
+    const map = new Map();
+    items.forEach(item => {
+      if (item.name && item.imageUrl && !map.has(item.name)) {
+        map.set(item.name, item.imageUrl);
+      }
+    });
+    return map;
+  }, [items]);
+
   const sizeGroups = useMemo(() => {
     const map = new Map();
 
@@ -35,8 +45,11 @@ export default function Replenish({ items }) {
       group.totalSold += item.sales || 0;
     });
 
-    return Array.from(map.values());
-  }, [items]);
+    return Array.from(map.values()).map(group => ({
+      ...group,
+      imageUrl: group.imageUrl || imageByName.get(group.name) || '',
+    }));
+  }, [items, imageByName]);
 
   const lowStockList = useMemo(() => {
     return sizeGroups
