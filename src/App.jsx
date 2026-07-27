@@ -3,7 +3,8 @@ import { loadInventory, saveInventory, loadLogs, saveLogs } from './utils/storag
 import Dashboard from './components/Dashboard';
 import InventoryTable from './components/InventoryTable';
 import StockTable from './components/StockTable';
-import { Gem, ListOrdered, PackageSearch, Lock, Eye, EyeOff } from 'lucide-react';
+import RingGallery from './components/RingGallery';
+import { Gem, ListOrdered, PackageSearch, Lock, Eye, EyeOff, LayoutGrid } from 'lucide-react';
 import { supabase } from './utils/supabase';
 
 // Get passcode from environment variables, fallback to "ringmaster" if not set
@@ -289,13 +290,19 @@ function App() {
           >
             <ListOrdered size={16} /> Order History
           </button>
-          <button 
+          <button
             className={`btn ${currentView === 'stock' ? 'bg-gold/20 text-gold border-gold/30' : 'btn-outline border-transparent'}`}
             onClick={() => setCurrentView('stock')}
           >
             <PackageSearch size={16} /> Current Stock
           </button>
-          <button 
+          <button
+            className={`btn ${currentView === 'gallery' ? 'bg-gold/20 text-gold border-gold/30' : 'btn-outline border-transparent'}`}
+            onClick={() => setCurrentView('gallery')}
+          >
+            <LayoutGrid size={16} /> Ring Gallery
+          </button>
+          <button
             className={`btn ${currentView === 'logs' ? 'bg-gold/20 text-gold border-gold/30' : 'btn-outline border-transparent'}`}
             onClick={() => setCurrentView('logs')}
           >
@@ -307,6 +314,8 @@ function App() {
           <InventoryTable items={items} setItems={setItems} logs={logs} setLogs={setLogs} />
         ) : currentView === 'stock' ? (
           <StockTable items={items} setItems={setItems} />
+        ) : currentView === 'gallery' ? (
+          <RingGallery items={items} />
         ) : (
           <div className="glass-panel p-6 animate-fade-in">
             <h2 className="text-xl font-bold mb-6">Original Submission History</h2>
