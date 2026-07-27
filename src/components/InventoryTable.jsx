@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Plus, Trash2, Edit2, AlertCircle, Check, X, ShoppingCart, Image as ImageIcon, Undo2, PackageSearch, ListOrdered, ChevronUp, ChevronDown, Upload, Database, Calculator } from 'lucide-react';
+import { Plus, Trash2, Edit2, AlertCircle, Check, X, ShoppingCart, Image as ImageIcon, Undo2, PackageSearch, ListOrdered, ChevronUp, ChevronDown, Upload, Database, Calculator, Copy } from 'lucide-react';
 import { calculateRevenue, calculateNetProfit, getReturnDeadlineInfo, compressImage, getDisplayValues } from '../utils/helpers';
 import { uploadImageToBlob, isBlobUrl } from '../utils/blob';
 import { format, addDays } from 'date-fns';
@@ -538,6 +538,33 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
     alert(`Fixed ${itemsToFix.length} record(s).`);
   };
 
+  const handleRemoveDuplicates = () => {
+    const seen = new Set();
+    const deduped = [];
+    let duplicateCount = 0;
+
+    items.forEach(item => {
+      if (seen.has(item.id)) {
+        duplicateCount++;
+      } else {
+        seen.add(item.id);
+        deduped.push(item);
+      }
+    });
+
+    if (duplicateCount === 0) {
+      alert('No duplicate records found.');
+      return;
+    }
+
+    if (!window.confirm(`Found ${duplicateCount} duplicate record(s) (same ID appearing more than once). Remove the extra copies? This cannot be undone.`)) {
+      return;
+    }
+
+    setItems(deduped);
+    alert(`Removed ${duplicateCount} duplicate record(s).`);
+  };
+
   const startEdit = (item) => {
     setEditingItemId(item.id);
     setEditForm({ 
@@ -729,6 +756,9 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
           </button>
           <button onClick={handleRecalculateCostTax} className="btn btn-outline border-white/10 text-xs py-1.5 flex items-center gap-2">
             <Calculator size={14} /> Fix Cost+Tax
+          </button>
+          <button onClick={handleRemoveDuplicates} className="btn btn-outline border-white/10 text-xs py-1.5 flex items-center gap-2">
+            <Copy size={14} /> Remove Duplicates
           </button>
           <button className="btn btn-outline border-orange-400 text-orange-400 hover:bg-orange-400/10 text-xs py-1.5 flex items-center gap-2" onClick={() => setIsReturningGlobal(!isReturningGlobal)}>
             <Undo2 size={14} /> New Return
