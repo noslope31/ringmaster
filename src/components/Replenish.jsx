@@ -96,7 +96,7 @@ export default function Replenish({ items }) {
           {lowStockList.map(group => (
             <div
               key={`${group.name}___${group.size}`}
-              className={`glass-panel p-3 flex flex-col items-center gap-2 text-center ${group.inventory <= 0 ? 'border-danger/40' : 'border-warning/40'}`}
+              className={`glass-panel p-2.5 flex flex-col items-center gap-1 text-center ${group.inventory <= 0 ? 'border-danger/40' : 'border-warning/40'}`}
             >
               {group.imageUrl ? (
                 <img src={group.imageUrl} alt={group.name} className="w-full aspect-square object-cover rounded border border-white/10" />
@@ -105,13 +105,16 @@ export default function Replenish({ items }) {
                   <ImageIcon size={24} />
                 </div>
               )}
-              <span className="text-xs font-semibold leading-tight break-words">{group.name}</span>
-              <span className="text-[10px] text-secondary uppercase tracking-wider">Size {group.size}</span>
-              <span className={`text-sm font-bold ${group.inventory <= 0 ? 'text-danger' : 'text-warning'}`}>
-                {group.inventory <= 0 ? 'Out of stock' : `${group.inventory} left`}
-              </span>
+              <span className="text-xs font-semibold leading-tight break-words w-full">{group.name}</span>
+              <div className="flex items-center justify-center gap-1 text-[10px] uppercase tracking-wider leading-none">
+                <span className="text-secondary">Size {group.size}</span>
+                <span className="text-muted">·</span>
+                <span className={`font-bold ${group.inventory <= 0 ? 'text-danger' : 'text-warning'}`}>
+                  {group.inventory <= 0 ? 'Out of stock' : `${group.inventory} left`}
+                </span>
+              </div>
               {group.totalSold > 0 && (
-                <span className="text-[10px] text-muted">{group.totalSold} sold total</span>
+                <span className="text-[9px] text-muted leading-none">{group.totalSold} sold total</span>
               )}
             </div>
           ))}

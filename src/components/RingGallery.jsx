@@ -188,7 +188,7 @@ export default function RingGallery({ items }) {
             return (
               <button
                 key={ring.name}
-                className="glass-panel p-3 flex flex-col items-center gap-2 hover:border-gold/40 transition-colors text-center"
+                className="glass-panel p-2.5 flex flex-col items-center gap-1 hover:border-gold/40 transition-colors text-center"
                 onClick={() => setSelectedRing(ring.name)}
               >
                 {ring.imageUrl ? (
@@ -199,17 +199,18 @@ export default function RingGallery({ items }) {
                   </div>
                 )}
                 <span className="text-xs font-semibold leading-tight break-words w-full">{ring.name}</span>
-                <span className={`text-[10px] uppercase tracking-wider font-bold ${totalInv > 0 ? 'text-gold' : 'text-muted'}`}>
-                  {totalInv} in stock
-                </span>
-                <div className="flex flex-wrap justify-center gap-x-1.5 gap-y-0.5 w-full">
+                <div className="flex items-center justify-center gap-1 text-[9px] uppercase tracking-wider leading-none">
+                  <span className={`font-bold ${totalInv > 0 ? 'text-gold' : 'text-muted'}`}>{totalInv} in stock</span>
+                  <span className="text-muted">·</span>
+                  <span className="font-bold text-blue-400">{totalSold} sold</span>
+                </div>
+                <div className="flex flex-wrap justify-center gap-x-1.5 gap-y-0.5 w-full leading-none">
                   {sizesSorted.map(s => (
                     <span key={s.size} className={`text-[9px] ${s.inventory > 0 ? 'text-gold' : 'text-muted'}`}>
                       {s.size}:{s.inventory}
                     </span>
                   ))}
                 </div>
-                <span className="text-[9px] text-blue-400 uppercase tracking-wider">{totalSold} sold</span>
               </button>
             );
           })}
