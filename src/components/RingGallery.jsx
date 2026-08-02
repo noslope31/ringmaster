@@ -183,6 +183,8 @@ export default function RingGallery({ items }) {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
           {ringList.map(ring => {
             const totalInv = totalInventoryFor(ring);
+            const sizesSorted = Array.from(ring.sizes.values()).sort((a, b) => sortSizes(a.size, b.size));
+            const totalSold = sizesSorted.reduce((sum, s) => sum + s.stockOut, 0);
             return (
               <button
                 key={ring.name}
@@ -196,10 +198,18 @@ export default function RingGallery({ items }) {
                     <ImageIcon size={24} />
                   </div>
                 )}
-                <span className="text-xs font-semibold leading-tight break-words">{ring.name}</span>
-                <span className={`text-[10px] uppercase tracking-wider ${totalInv > 0 ? 'text-gold' : 'text-muted'}`}>
+                <span className="text-xs font-semibold leading-tight break-words w-full">{ring.name}</span>
+                <span className={`text-[10px] uppercase tracking-wider font-bold ${totalInv > 0 ? 'text-gold' : 'text-muted'}`}>
                   {totalInv} in stock
                 </span>
+                <div className="flex flex-wrap justify-center gap-x-1.5 gap-y-0.5 w-full">
+                  {sizesSorted.map(s => (
+                    <span key={s.size} className={`text-[9px] ${s.inventory > 0 ? 'text-gold' : 'text-muted'}`}>
+                      {s.size}:{s.inventory}
+                    </span>
+                  ))}
+                </div>
+                <span className="text-[9px] text-blue-400 uppercase tracking-wider">{totalSold} sold</span>
               </button>
             );
           })}
