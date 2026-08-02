@@ -322,7 +322,7 @@ function App() {
         ) : currentView === 'stock' ? (
           <StockTable items={items} setItems={setItems} />
         ) : currentView === 'gallery' ? (
-          <RingGallery items={items} />
+          <RingGallery items={items} setItems={setItems} />
         ) : currentView === 'replenish' ? (
           <Replenish items={items} />
         ) : (
