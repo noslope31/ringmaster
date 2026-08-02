@@ -9,56 +9,78 @@ const sortSizes = (a, b) => {
   return String(a).localeCompare(String(b));
 };
 
-const emptyEditForm = {
-  size: '', quantity: 0, sales: 0, returns: 0, unitCost: 0, unitCostAfterTax: 0,
-  unitPrice: 0, returnedPrice: 0, returnStatus: '', remark: '', orderDate: '', deliveryDate: ''
-};
+const formFor = (item) => ({
+  size: item.size || '', quantity: item.quantity || 0, sales: item.sales || 0, returns: item.returns || 0,
+  unitCost: item.unitCost || 0, unitCostAfterTax: item.unitCostAfterTax || 0, unitPrice: item.unitPrice || 0,
+  returnedPrice: item.returnedPrice || 0, returnStatus: item.returnStatus || '', remark: item.remark || '',
+  orderDate: item.orderDate || '', deliveryDate: item.deliveryDate || ''
+});
+
+const applyForm = (item, form) => ({
+  ...item,
+  size: form.size,
+  quantity: Number(form.quantity) || 0,
+  sales: Number(form.sales) || 0,
+  returns: Number(form.returns) || 0,
+  unitCost: Number(form.unitCost) || 0,
+  unitCostAfterTax: Number(form.unitCostAfterTax) || 0,
+  unitPrice: Number(form.unitPrice) || 0,
+  returnedPrice: Number(form.returnedPrice) || 0,
+  returnStatus: form.returnStatus,
+  remark: form.remark,
+  orderDate: form.orderDate,
+  deliveryDate: form.deliveryDate
+});
 
 export default function RingGallery({ items, setItems }) {
   const [selectedSize, setSelectedSize] = useState(null);
   const [selectedRing, setSelectedRing] = useState(null);
-  const [editingItemId, setEditingItemId] = useState(null);
-  const [editForm, setEditForm] = useState(emptyEditForm);
+  const [editingIds, setEditingIds] = useState(new Set());
+  const [editForms, setEditForms] = useState({});
 
   const startEdit = (item) => {
-    setEditingItemId(item.id);
-    setEditForm({
-      size: item.size || '', quantity: item.quantity || 0, sales: item.sales || 0, returns: item.returns || 0,
-      unitCost: item.unitCost || 0, unitCostAfterTax: item.unitCostAfterTax || 0, unitPrice: item.unitPrice || 0,
-      returnedPrice: item.returnedPrice || 0, returnStatus: item.returnStatus || '', remark: item.remark || '',
-      orderDate: item.orderDate || '', deliveryDate: item.deliveryDate || ''
+    setEditingIds(new Set([item.id]));
+    setEditForms(prev => ({ ...prev, [item.id]: formFor(item) }));
+  };
+
+  const startEditAll = (relatedItems) => {
+    setEditingIds(new Set(relatedItems.map(i => i.id)));
+    setEditForms(prev => {
+      const next = { ...prev };
+      relatedItems.forEach(item => { next[item.id] = formFor(item); });
+      return next;
     });
   };
 
-  const handleEditCostChange = (e) => {
+  const updateEditForm = (id, patch) => {
+    setEditForms(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }));
+  };
+
+  const handleEditCostChange = (id, e) => {
     const val = e.target.value;
     const numVal = val === '' ? '' : Number(val);
     const afterTax = val === '' ? '' : Number((numVal * 1.12).toFixed(2));
-    setEditForm({ ...editForm, unitCost: numVal, unitCostAfterTax: afterTax });
+    updateEditForm(id, { unitCost: numVal, unitCostAfterTax: afterTax });
   };
 
   const saveEdit = (id) => {
-    setItems(items.map(item => item.id === id ? {
-      ...item,
-      size: editForm.size,
-      quantity: Number(editForm.quantity) || 0,
-      sales: Number(editForm.sales) || 0,
-      returns: Number(editForm.returns) || 0,
-      unitCost: Number(editForm.unitCost) || 0,
-      unitCostAfterTax: Number(editForm.unitCostAfterTax) || 0,
-      unitPrice: Number(editForm.unitPrice) || 0,
-      returnedPrice: Number(editForm.returnedPrice) || 0,
-      returnStatus: editForm.returnStatus,
-      remark: editForm.remark,
-      orderDate: editForm.orderDate,
-      deliveryDate: editForm.deliveryDate
-    } : item));
-    setEditingItemId(null);
+    setItems(items.map(item => (item.id === id && editForms[id]) ? applyForm(item, editForms[id]) : item));
+    setEditingIds(prev => { const next = new Set(prev); next.delete(id); return next; });
+  };
+
+  const saveAll = () => {
+    setItems(items.map(item => (editingIds.has(item.id) && editForms[item.id]) ? applyForm(item, editForms[item.id]) : item));
+    setEditingIds(new Set());
+  };
+
+  const cancelEdit = (id) => {
+    setEditingIds(prev => { const next = new Set(prev); next.delete(id); return next; });
   };
 
   const handleDeleteItem = (id) => {
     if (window.confirm('Are you sure you want to delete this record? This cannot be undone.')) {
       setItems(items.filter(item => item.id !== id));
+      setEditingIds(prev => { const next = new Set(prev); next.delete(id); return next; });
     }
   };
 
@@ -167,7 +189,25 @@ export default function RingGallery({ items, setItems }) {
           </table>
         </div>
 
-        <h3 className="text-xs font-semibold mb-2 text-secondary uppercase tracking-wider">Order History</h3>
+        <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
+          <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider">Order History</h3>
+          {relatedItems.length > 0 && (
+            editingIds.size > 0 ? (
+              <div className="flex gap-2">
+                <button className="btn btn-primary text-xs py-1 px-2 flex items-center gap-1" onClick={saveAll}>
+                  <Check size={12} /> Save All
+                </button>
+                <button className="btn btn-outline text-xs py-1 px-2 flex items-center gap-1" onClick={() => setEditingIds(new Set())}>
+                  <X size={12} /> Cancel All
+                </button>
+              </div>
+            ) : (
+              <button className="btn btn-outline text-xs py-1 px-2 flex items-center gap-1" onClick={() => startEditAll(relatedItems)}>
+                <Edit2 size={12} /> Edit All
+              </button>
+            )
+          )}
+        </div>
         <div className="table-container">
           <table className="data-table text-sm">
             <thead>
@@ -189,42 +229,43 @@ export default function RingGallery({ items, setItems }) {
               {relatedItems.length === 0 ? (
                 <tr><td colSpan="11" className="text-center py-6 text-muted">No records found.</td></tr>
               ) : relatedItems.map(item => {
-                const isEditing = editingItemId === item.id;
+                const isEditing = editingIds.has(item.id);
+                const form = editForms[item.id] || formFor(item);
                 return (
                   <tr key={item.id} onKeyDown={(e) => { if (e.key === 'Enter' && isEditing) saveEdit(item.id); }}>
                     <td className="font-bold text-center">
                       {isEditing ? (
-                        <input type="text" className="input-field py-1 px-2 w-16 text-xs text-center" value={editForm.size} onChange={e => setEditForm({ ...editForm, size: e.target.value })} />
+                        <input type="text" className="input-field py-1 px-2 w-16 text-xs text-center" value={form.size} onChange={e => updateEditForm(item.id, { size: e.target.value })} />
                       ) : (item.size || '-')}
                     </td>
                     <td className="text-center">
                       {isEditing ? (
-                        <input type="number" min="0" className="input-field py-1 px-2 w-16 text-xs text-center" value={editForm.quantity} onChange={e => setEditForm({ ...editForm, quantity: e.target.value })} />
+                        <input type="number" min="0" className="input-field py-1 px-2 w-16 text-xs text-center" value={form.quantity} onChange={e => updateEditForm(item.id, { quantity: e.target.value })} />
                       ) : (item.quantity || 0)}
                     </td>
                     <td className="text-center">
                       {isEditing ? (
-                        <input type="number" min="0" className="input-field py-1 px-2 w-16 text-xs text-center" value={editForm.sales} onChange={e => setEditForm({ ...editForm, sales: e.target.value })} />
+                        <input type="number" min="0" className="input-field py-1 px-2 w-16 text-xs text-center" value={form.sales} onChange={e => updateEditForm(item.id, { sales: e.target.value })} />
                       ) : (item.sales || 0)}
                     </td>
                     <td>
                       {isEditing ? (
-                        <input type="number" step="0.01" className="input-field py-1 px-2 w-20 text-xs" value={editForm.unitCost} onChange={handleEditCostChange} />
+                        <input type="number" step="0.01" className="input-field py-1 px-2 w-20 text-xs" value={form.unitCost} onChange={e => handleEditCostChange(item.id, e)} />
                       ) : (item.unitCost != null ? item.unitCost.toFixed(2) : '-')}
                     </td>
                     <td>
                       {isEditing ? (
-                        <input type="number" step="0.01" className="input-field py-1 px-1 w-20 text-xs" value={editForm.unitCostAfterTax} onChange={e => setEditForm({ ...editForm, unitCostAfterTax: e.target.value })} />
+                        <input type="number" step="0.01" className="input-field py-1 px-1 w-20 text-xs" value={form.unitCostAfterTax} onChange={e => updateEditForm(item.id, { unitCostAfterTax: e.target.value })} />
                       ) : (item.unitCostAfterTax != null ? item.unitCostAfterTax.toFixed(2) : '-')}
                     </td>
                     <td className="text-center">
                       {isEditing ? (
-                        <input type="number" step="0.01" className="input-field py-1 px-2 w-20 text-xs" value={editForm.unitPrice} onChange={e => setEditForm({ ...editForm, unitPrice: e.target.value })} />
+                        <input type="number" step="0.01" className="input-field py-1 px-2 w-20 text-xs" value={form.unitPrice} onChange={e => updateEditForm(item.id, { unitPrice: e.target.value })} />
                       ) : (item.unitPrice != null ? item.unitPrice.toFixed(2) : '-')}
                     </td>
                     <td>
                       {isEditing ? (
-                        <select className="input-field py-1 px-1 text-xs" value={editForm.returnStatus} onChange={e => setEditForm({ ...editForm, returnStatus: e.target.value })}>
+                        <select className="input-field py-1 px-1 text-xs" value={form.returnStatus} onChange={e => updateEditForm(item.id, { returnStatus: e.target.value })}>
                           <option value="">-</option>
                           <option value="Return in progress">In progress</option>
                           <option value="Returned">Returned</option>
@@ -234,19 +275,19 @@ export default function RingGallery({ items, setItems }) {
                     </td>
                     <td>
                       {isEditing ? (
-                        <input type="text" className="input-field py-1 px-2 w-full text-xs" value={editForm.remark} onChange={e => setEditForm({ ...editForm, remark: e.target.value })} placeholder="Remark" />
+                        <input type="text" className="input-field py-1 px-2 w-full text-xs" value={form.remark} onChange={e => updateEditForm(item.id, { remark: e.target.value })} placeholder="Remark" />
                       ) : (
                         <span className="text-xs text-muted max-w-[150px] break-words block" title={item.remark}>{item.remark || '-'}</span>
                       )}
                     </td>
                     <td className="whitespace-nowrap">
                       {isEditing ? (
-                        <input type="date" className="input-field py-1 px-2 w-[130px] text-xs" value={editForm.orderDate} onChange={e => setEditForm({ ...editForm, orderDate: e.target.value })} />
+                        <input type="date" className="input-field py-1 px-2 w-[130px] text-xs" value={form.orderDate} onChange={e => updateEditForm(item.id, { orderDate: e.target.value })} />
                       ) : (item.orderDate || '-')}
                     </td>
                     <td className="whitespace-nowrap">
                       {isEditing ? (
-                        <input type="date" className="input-field py-1 px-2 w-[130px] text-xs" value={editForm.deliveryDate} onChange={e => setEditForm({ ...editForm, deliveryDate: e.target.value })} />
+                        <input type="date" className="input-field py-1 px-2 w-[130px] text-xs" value={form.deliveryDate} onChange={e => updateEditForm(item.id, { deliveryDate: e.target.value })} />
                       ) : (item.deliveryDate || '-')}
                     </td>
                     <td className="text-right">
@@ -256,7 +297,7 @@ export default function RingGallery({ items, setItems }) {
                             <button className="btn btn-primary p-1" onClick={() => saveEdit(item.id)} title="Save changes">
                               <Check size={14} />
                             </button>
-                            <button className="btn btn-outline p-1" onClick={() => setEditingItemId(null)} title="Cancel">
+                            <button className="btn btn-outline p-1" onClick={() => cancelEdit(item.id)} title="Cancel">
                               <X size={14} />
                             </button>
                           </>
