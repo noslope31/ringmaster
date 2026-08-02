@@ -8,11 +8,8 @@ import { format, addDays } from 'date-fns';
 export default function InventoryTable({ items, setItems, logs, setLogs }) {
   const [isAdding, setIsAdding] = useState(false);
   const [isReturningGlobal, setIsReturningGlobal] = useState(false);
-  const [editingItemId, setEditingItemId] = useState(null);
-  const [editForm, setEditForm] = useState({ 
-    sales: 0, returns: 0, unitPrice: 0, remark: '', returnedPrice: 0, returnStatus: '',
-    size: '', quantity: 0, unitCost: 0, unitCostAfterTax: 0, orderDate: '', deliveryDate: ''
-  });
+  const [editingIds, setEditingIds] = useState(new Set());
+  const [editForms, setEditForms] = useState({});
 
   // Data Repair: Fix corrupted date strings that were saved during the timezone bug
   useMemo(() => {
@@ -385,6 +382,7 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
   const handleDelete = (id) => {
     if (window.confirm('Are you sure you want to delete this record? This cannot be undone.')) {
       setItems(items.filter(item => item.id !== id));
+      setEditingIds(prev => { const next = new Set(prev); next.delete(id); return next; });
     }
   };
 
@@ -565,48 +563,64 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
     alert(`Removed ${duplicateCount} duplicate record(s).`);
   };
 
+  const formForItem = (item) => ({
+    sales: item.sales || 0, returns: item.returns || 0, unitPrice: item.unitPrice || 0, remark: item.remark || '', returnedPrice: item.returnedPrice || 0, returnStatus: item.returnStatus || '',
+    size: item.size || '', quantity: item.quantity || 0, unitCost: item.unitCost || 0, unitCostAfterTax: item.unitCostAfterTax || 0, orderDate: item.orderDate || '', deliveryDate: item.deliveryDate || ''
+  });
+
+  const applyEditForm = (item, form) => ({
+    ...item,
+    sales: Number(form.sales) || 0,
+    returns: Number(form.returns) || 0,
+    returnedPrice: Number(form.returnedPrice) || 0,
+    returnStatus: form.returnStatus,
+    unitPrice: Number(form.unitPrice) || 0,
+    remark: form.remark,
+    size: form.size,
+    quantity: Number(form.quantity) || 0,
+    unitCost: Number(form.unitCost) || 0,
+    unitCostAfterTax: Number(form.unitCostAfterTax) || 0,
+    orderDate: form.orderDate,
+    deliveryDate: form.deliveryDate
+  });
+
   const startEdit = (item) => {
-    setEditingItemId(item.id);
-    setEditForm({ 
-      sales: item.sales || 0, returns: item.returns || 0, unitPrice: item.unitPrice || 0, remark: item.remark || '', returnedPrice: item.returnedPrice || 0, returnStatus: item.returnStatus || '',
-      size: item.size || '', quantity: item.quantity || 0, unitCost: item.unitCost || 0, unitCostAfterTax: item.unitCostAfterTax || 0, orderDate: item.orderDate || '', deliveryDate: item.deliveryDate || ''
+    setEditingIds(new Set([item.id]));
+    setEditForms(prev => ({ ...prev, [item.id]: formForItem(item) }));
+  };
+
+  const startEditAll = (itemsToEdit) => {
+    setEditingIds(new Set(itemsToEdit.map(i => i.id)));
+    setEditForms(prev => {
+      const next = { ...prev };
+      itemsToEdit.forEach(item => { next[item.id] = formForItem(item); });
+      return next;
     });
   };
 
-  const handleEditCostChange = (e) => {
+  const updateEditForm = (id, patch) => {
+    setEditForms(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }));
+  };
+
+  const handleEditCostChange = (id, e) => {
     const val = e.target.value;
     const numVal = val === '' ? '' : Number(val);
-    let afterTax = editForm.unitCostAfterTax;
-    if (val !== '') {
-      afterTax = Number((numVal * 1.12).toFixed(2));
-    } else {
-      afterTax = '';
-    }
-    setEditForm({ ...editForm, unitCost: numVal, unitCostAfterTax: afterTax });
+    const afterTax = val === '' ? '' : Number((numVal * 1.12).toFixed(2));
+    updateEditForm(id, { unitCost: numVal, unitCostAfterTax: afterTax });
   };
 
   const saveEdit = (id) => {
-    setItems(items.map(item => {
-      if (item.id === id) {
-        return {
-          ...item,
-          sales: Number(editForm.sales) || 0,
-          returns: Number(editForm.returns) || 0,
-          returnedPrice: Number(editForm.returnedPrice) || 0,
-          returnStatus: editForm.returnStatus,
-          unitPrice: Number(editForm.unitPrice) || 0,
-          remark: editForm.remark,
-          size: editForm.size,
-          quantity: Number(editForm.quantity) || 0,
-          unitCost: Number(editForm.unitCost) || 0,
-          unitCostAfterTax: Number(editForm.unitCostAfterTax) || 0,
-          orderDate: editForm.orderDate,
-          deliveryDate: editForm.deliveryDate
-        };
-      }
-      return item;
-    }));
-    setEditingItemId(null);
+    setItems(items.map(item => (item.id === id && editForms[id]) ? applyEditForm(item, editForms[id]) : item));
+    setEditingIds(prev => { const next = new Set(prev); next.delete(id); return next; });
+  };
+
+  const saveAllEdits = () => {
+    setItems(items.map(item => (editingIds.has(item.id) && editForms[item.id]) ? applyEditForm(item, editForms[item.id]) : item));
+    setEditingIds(new Set());
+  };
+
+  const cancelEdit = (id) => {
+    setEditingIds(prev => { const next = new Set(prev); next.delete(id); return next; });
   };
 
   const startSell = (item) => {
@@ -736,9 +750,27 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
   return (
     <div className="glass-panel p-6 animate-fade-in" onClick={() => setActiveDropdown(null)}>
       <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
-        <h2 className="text-xl font-bold flex items-center gap-2">
-          Inventory Data
-        </h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            Inventory Data
+          </h2>
+          {filteredItems.length > 0 && (
+            editingIds.size > 0 ? (
+              <div className="flex gap-2">
+                <button className="btn btn-primary text-xs py-1 px-2 flex items-center gap-1" onClick={saveAllEdits}>
+                  <Check size={12} /> Save All
+                </button>
+                <button className="btn btn-outline text-xs py-1 px-2 flex items-center gap-1" onClick={() => setEditingIds(new Set())}>
+                  <X size={12} /> Cancel All
+                </button>
+              </div>
+            ) : (
+              <button className="btn btn-outline text-xs py-1 px-2 flex items-center gap-1" onClick={() => startEditAll(filteredItems)}>
+                <Edit2 size={12} /> Edit All
+              </button>
+            )
+          )}
+        </div>
         <div className="flex flex-wrap gap-2">
           <label className="btn btn-outline border-white/10 text-xs py-1.5 flex items-center gap-2 cursor-pointer">
             <Upload size={14} /> Import New Order
@@ -1245,23 +1277,24 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
                   });
 
                   group.forEach((item, index) => {
-                    const isEditing = editingItemId === item.id;
+                    const isEditing = editingIds.has(item.id);
                     const isSelling = sellingItemId === item.id;
+                    const editForm = editForms[item.id] || formForItem(item);
                     const rawStockIn = isEditing ? (Number(editForm.quantity) || 0) : (item.quantity || 0);
                     const returns = isEditing ? (Number(editForm.returns) || 0) : (item.returns || 0);
                     // For old return records where quantity was 0, use returns as the stock-in display
                     const stockIn = rawStockIn || (returns > 0 ? returns : 0);
                     const stockOut = isEditing ? (Number(editForm.sales) || 0) : (item.sales || 0);
                     const returnedPrice = isEditing ? (Number(editForm.returnedPrice) || 0) : (item.returnedPrice || 0);
-                    
+
                     const inventory = stockIn - stockOut - returns;
-                    
+
                     const cost = isEditing ? (Number(editForm.unitCost) || 0) : (item.unitCost || 0);
                     const unitPrice = isEditing ? (Number(editForm.unitPrice) || 0) : (item.unitPrice || 0);
                     const costAfterTax = isEditing ? (Number(editForm.unitCostAfterTax) || 0) : (item.unitCostAfterTax || 0);
                     const costTaxQ = costAfterTax * stockIn;
                     const priceQ = unitPrice * stockOut;
-                    
+
                     const returnedTotal = returnedPrice * returns;
                     const actualReturnedTotal = (item.returnStatus === 'Returned' || item.returnStatus === 'Return in progress' || (isEditing && (editForm.returnStatus === 'Returned' || editForm.returnStatus === 'Return in progress'))) ? returnedTotal : 0;
                     
@@ -1294,7 +1327,7 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
                                 <button className="btn btn-primary p-0.5" onClick={() => saveEdit(item.id)} title="Save changes">
                                   <Check size={12} />
                                 </button>
-                                <button className="btn btn-outline p-0.5" onClick={() => setEditingItemId(null)} title="Cancel">
+                                <button className="btn btn-outline p-0.5" onClick={() => cancelEdit(item.id)} title="Cancel">
                                   <X size={12} />
                                 </button>
                               </>
@@ -1382,14 +1415,14 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
                         )}
                         <td className="font-bold text-center">
                           {isEditing ? (
-                            <input type="text" className="input-field py-1 px-2 w-16 text-xs text-center mx-auto" value={editForm.size} onChange={e => setEditForm({...editForm, size: e.target.value})} />
+                            <input type="text" className="input-field py-1 px-2 w-16 text-xs text-center mx-auto" value={editForm.size} onChange={e => updateEditForm(item.id, {size: e.target.value})} />
                           ) : (
                             item.size || '-'
                           )}
                         </td>
                         <td className="text-center">
                           {isEditing ? (
-                            <input type="number" min="0" className="input-field py-1 px-2 w-16 text-center mx-auto" value={editForm.quantity} onChange={e => setEditForm({...editForm, quantity: e.target.value})} />
+                            <input type="number" min="0" className="input-field py-1 px-2 w-16 text-center mx-auto" value={editForm.quantity} onChange={e => updateEditForm(item.id, {quantity: e.target.value})} />
                           ) : (
                             stockIn || ''
                           )}
@@ -1397,7 +1430,7 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
                         
                         <td className="text-center">
                           {isEditing ? (
-                            <input type="number" min="0" className="input-field py-1 px-2 w-16 text-center mx-auto" value={editForm.sales} onChange={e => setEditForm({...editForm, sales: e.target.value})} />
+                            <input type="number" min="0" className="input-field py-1 px-2 w-16 text-center mx-auto" value={editForm.sales} onChange={e => updateEditForm(item.id, {sales: e.target.value})} />
                           ) : (
                             stockOut || ''
                           )}
@@ -1405,7 +1438,7 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
                         
                         <td className="text-center">
                           {isEditing ? (
-                            <input type="number" min="0" className="input-field py-1 px-2 w-16 text-center mx-auto" value={editForm.returns} onChange={e => setEditForm({...editForm, returns: e.target.value})} />
+                            <input type="number" min="0" className="input-field py-1 px-2 w-16 text-center mx-auto" value={editForm.returns} onChange={e => updateEditForm(item.id, {returns: e.target.value})} />
                           ) : (
                             returns || ''
                           )}
@@ -1414,7 +1447,7 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
                         <td className={`text-center font-bold ${inventory > 0 ? 'text-gold' : 'text-muted'}`}>{inventory}</td>
                         <td>
                           {isEditing ? (
-                            <input type="number" step="0.01" className="input-field py-1 px-2 w-20 mx-auto" value={editForm.unitCost} onChange={handleEditCostChange} />
+                            <input type="number" step="0.01" className="input-field py-1 px-2 w-20 mx-auto" value={editForm.unitCost} onChange={e => handleEditCostChange(item.id, e)} />
                           ) : (
                             cost ? cost.toFixed(2) : '0'
                           )}
@@ -1422,7 +1455,7 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
                         <td className={inventory > 0 ? 'text-pink-400' : ''}>
                           {isEditing ? (
                             <div className="flex flex-col items-center">
-                              <input type="number" step="0.01" className="input-field py-1 px-1 w-20 mx-auto text-xs" value={editForm.unitCostAfterTax} onChange={e => setEditForm({...editForm, unitCostAfterTax: e.target.value})} title="Unit Cost After Tax" />
+                              <input type="number" step="0.01" className="input-field py-1 px-1 w-20 mx-auto text-xs" value={editForm.unitCostAfterTax} onChange={e => updateEditForm(item.id, {unitCostAfterTax: e.target.value})} title="Unit Cost After Tax" />
                               <span className="text-[10px] text-muted">Cost+Tax (Per Item)</span>
                             </div>
                           ) : (
@@ -1432,7 +1465,7 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
                         
                         <td className="text-center">
                           {isEditing ? (
-                            <input type="number" step="0.01" min="0" className="input-field py-1 px-2 w-20 text-center mx-auto" value={editForm.unitPrice} onChange={e => setEditForm({...editForm, unitPrice: e.target.value})} />
+                            <input type="number" step="0.01" min="0" className="input-field py-1 px-2 w-20 text-center mx-auto" value={editForm.unitPrice} onChange={e => updateEditForm(item.id, {unitPrice: e.target.value})} />
                           ) : (
                             unitPrice ? unitPrice.toFixed(2) : ''
                           )}
@@ -1441,7 +1474,7 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
                         <td>{priceQ ? priceQ.toFixed(2) : ''}</td>
                         <td className="text-center">
                           {isEditing ? (
-                            <input type="number" step="0.01" min="0" className="input-field py-1 px-2 w-16 text-center mx-auto" value={editForm.returnedPrice} onChange={e => setEditForm({...editForm, returnedPrice: e.target.value})} />
+                            <input type="number" step="0.01" min="0" className="input-field py-1 px-2 w-16 text-center mx-auto" value={editForm.returnedPrice} onChange={e => updateEditForm(item.id, {returnedPrice: e.target.value})} />
                           ) : (
                             returnedPrice ? returnedPrice.toFixed(2) : ''
                           )}
@@ -1450,21 +1483,21 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
                         <td>{profit ? profit.toFixed(2) : ''}</td>
                         <td className="text-xs text-muted">
                           {isEditing ? (
-                            <input type="date" className="input-field py-1 px-2 w-[120px] text-xs" value={editForm.orderDate} onChange={e => setEditForm({...editForm, orderDate: e.target.value})} title="Order Date" />
+                            <input type="date" className="input-field py-1 px-2 w-[120px] text-xs" value={editForm.orderDate} onChange={e => updateEditForm(item.id, {orderDate: e.target.value})} title="Order Date" />
                           ) : (
                             item.orderDate || '-'
                           )}
                         </td>
                         <td className="text-xs text-muted">
                           {isEditing ? (
-                            <input type="date" className="input-field py-1 px-2 w-[120px] text-xs" value={editForm.deliveryDate} onChange={e => setEditForm({...editForm, deliveryDate: e.target.value})} title="Delivery Date" />
+                            <input type="date" className="input-field py-1 px-2 w-[120px] text-xs" value={editForm.deliveryDate} onChange={e => updateEditForm(item.id, {deliveryDate: e.target.value})} title="Delivery Date" />
                           ) : (
                             item.deliveryDate || '-'
                           )}
                         </td>
                         <td>
                           {isEditing ? (
-                            <select className="input-field py-1 px-1 text-xs" value={editForm.returnStatus} onChange={e => setEditForm({...editForm, returnStatus: e.target.value})}>
+                            <select className="input-field py-1 px-1 text-xs" value={editForm.returnStatus} onChange={e => updateEditForm(item.id, {returnStatus: e.target.value})}>
                               <option value="">-</option>
                               <option value="Return in progress">In progress</option>
                               <option value="Returned">Returned</option>
@@ -1494,7 +1527,7 @@ export default function InventoryTable({ items, setItems, logs, setLogs }) {
                         </td>
                         <td>
                           {isEditing ? (
-                            <input type="text" className="input-field py-1 px-2 w-full text-xs" value={editForm.remark} onChange={e => setEditForm({...editForm, remark: e.target.value})} placeholder="Remark" />
+                            <input type="text" className="input-field py-1 px-2 w-full text-xs" value={editForm.remark} onChange={e => updateEditForm(item.id, {remark: e.target.value})} placeholder="Remark" />
                           ) : (
                             <span className="text-xs text-muted max-w-[150px] break-words block" title={item.remark}>{item.remark || '-'}</span>
                           )}
